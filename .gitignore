@@ -1,1 +1,4 @@
 *.swp
+
+# Recommended file name for times
+*.times
