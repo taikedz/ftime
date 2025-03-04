@@ -16,31 +16,44 @@ import (
     "log"
     "strings"
     "path/filepath"
+
+    "github.com/taikedz/goargs/goargs"
 )
 
 const ERR_UNKNOWN = 120
 
 func main() {
-    if len(os.Args) < 3 {
-        binname := filepath.Base(os.Args[0])
-        fmt.Printf("%s TIMERFILE COMMAND ...\n", binname)
-        fmt.Printf("e.g.\n")
-        fmt.Printf("    %s t.times find ~/ -name '*.mp3'\n", binname)
-        os.Exit(1)
-    }
+    timings_file, args := parseArgs()
 
     // Pre-emptively create file to be sure we can actually access it
     //  (at least at ths start...)
-    f := openFile(os.Args[1])
+    f := openFile(timings_file)
     f.Close()
 
     t0 := time.Now()
-    status := runCommand(os.Args[2], os.Args[3:]...)
+    status := runCommand(args[0], args[1:]...)
     t1 := time.Now()
 
-    writeTime(os.Args[1], t1.Sub(t0), strings.Join(os.Args[2:], " "))
+    writeTime(timings_file, t1.Sub(t0), strings.Join(args, " "))
 
     os.Exit(status)
+}
+
+func parseArgs() (string, []string) {
+    binname := filepath.Base(os.Args[0])
+    parser := goargs.NewParser(fmt.Sprintf("%s [--times FILENAME] -- COMMAND ...", binname) )
+
+    timings_file := parser.String("times", "t.times", "Name of the file to store timing info in")
+    parser.SetShortFlag('t', "times")
+
+    parser.ParseCliArgs(false)
+
+    if len(parser.PassdownArgs) == 0 {
+        parser.PrintHelp()
+        os.Exit(1)
+    }
+
+    return *timings_file, parser.PassdownArgs
 }
 
 func openFile(filename string) *os.File {
